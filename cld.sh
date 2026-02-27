@@ -42,7 +42,29 @@ show_splash() {
   local DIM="\033[2m"
   local R="\033[0m"
   local dir="${PWD/#$HOME/~}"
-  echo -e "${CO}✦ Claude Code${R} ${DIM}·${R} ${CO}${1}${R} ${DIM}·${R} ${DIM}${dir}${R}"
+  echo -e "${CO}✳ Claude Code${R} ${DIM}·${R} ${CO}${1}${R} ${DIM}·${R} ${DIM}${dir}${R}"
+
+  # Last session for this project
+  local history="$CLAUDE_CONFIG_DIR/history.jsonl"
+  if [[ -f "$history" ]]; then
+    local ts
+    ts=$(grep -F "\"project\":\"$PWD\"" "$history" | tail -1 | $JQ_BIN -r '.timestamp' 2>/dev/null)
+    if [[ -n "$ts" && "$ts" != "null" ]]; then
+      local now=$(($(date +%s) * 1000))
+      local diff_s=$(( (now - ts) / 1000 ))
+      local ago
+      if (( diff_s < 60 )); then
+        ago="just now"
+      elif (( diff_s < 3600 )); then
+        ago="$(( diff_s / 60 ))m ago"
+      elif (( diff_s < 86400 )); then
+        ago="$(( diff_s / 3600 ))h ago"
+      else
+        ago="$(( diff_s / 86400 ))d ago"
+      fi
+      echo -e "  ${DIM}last session ${ago}${R}"
+    fi
+  fi
 }
 
 # Collect allowed profiles
@@ -75,7 +97,6 @@ elif (( ${#allowed} == 0 )); then
   exit 1
 elif (( ${#allowed} == 1 )); then
   profile="${allowed[1]}"
-  echo "Auto-selected profile: $profile"
 else
   # Multiple matches - use fzf
   fzf_input=""
