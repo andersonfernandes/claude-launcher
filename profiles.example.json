@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "personal": {
+      "directories": ["~/Workspace/Personal", "~/.scripts"],
+      "description": "Personal projects"
+    },
+    "work": {
+      "directories": ["~/Workspace/Work"],
+      "description": "Work projects"
+    }
+  }
+}

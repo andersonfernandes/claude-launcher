@@ -1,0 +1,52 @@
+#compdef cld
+
+# Zsh completion for cld (Claude Launcher)
+
+_cld() {
+  local config_file="$HOME/.scripts/claude-launcher/profiles.json"
+  local jq_bin="/usr/bin/jq"
+
+  if [[ ! -f "$config_file" ]] || [[ ! -x "$jq_bin" ]]; then
+    return 1
+  fi
+
+  case $CURRENT in
+    2)
+      # First argument: profile name (context-aware)
+      local -a profiles
+      local line
+      while IFS= read -r line; do
+        [[ -n "$line" ]] && profiles+=("$line")
+      done < <(
+        $jq_bin -r --arg pwd "$PWD" --arg home "$HOME" '
+          .profiles | to_entries[] |
+          select(
+            .value.directories | any(
+              gsub("^~"; $home) as $dir |
+              ($pwd == $dir) or ($pwd | startswith($dir + "/"))
+            )
+          ) | "\(.key):\(.value.description)"
+        ' "$config_file"
+      )
+
+      _describe 'profile' profiles
+      ;;
+    *)
+      # Remaining arguments: claude flags
+      _arguments \
+        '--model[Model to use]:model:(claude-sonnet-4-6 claude-opus-4-6 claude-haiku-4-5-20251001)' \
+        '--continue[Continue most recent conversation]' \
+        '--resume[Resume a specific conversation]:session_id:' \
+        '--print[Print mode - non-interactive]' \
+        '--verbose[Enable verbose output]' \
+        '--max-turns[Maximum agentic turns]:turns:' \
+        '--system-prompt[Override system prompt]:prompt:' \
+        '--allowedTools[Allowed tools]:tools:' \
+        '--disallowedTools[Disallowed tools]:tools:' \
+        '--permission-mode[Permission mode]:mode:(default auto-accept)' \
+        '*:file:_files'
+      ;;
+  esac
+}
+
+_cld "$@"
