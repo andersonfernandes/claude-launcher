@@ -46,7 +46,7 @@ show_splash() {
 }
 
 # Collect allowed profiles
-allowed=("${(@f)$(get_allowed_profiles)}")
+allowed=(${(f)"$(get_allowed_profiles)"})
 
 # Determine which profile to use
 if [[ -n "$1" ]] && ! [[ "$1" == -* ]]; then
