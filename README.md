@@ -20,12 +20,31 @@ Profile-based launcher for [Claude Code](https://docs.anthropic.com/en/docs/clau
 
 ## Dependencies
 
-- **jq** - JSON parsing (`/usr/bin/jq`)
-- **fzf** - Interactive profile selection when multiple profiles match (`~/.local/share/nvim/site/pack/packer/start/fzf/bin/fzf`)
-- **claude** - Claude Code CLI (`~/.local/bin/claude`)
+- **jq** - JSON parsing
+- **fzf** - Interactive picker
+- **claude** - Claude Code CLI
 - **zsh** - Shell (not bash-compatible)
 
+All three binaries are discovered via `command -v`. If they live outside your `PATH`, override with environment variables:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `CLD_FZF_BIN` | `$(command -v fzf)` | Path to fzf binary |
+| `CLD_JQ_BIN` | `$(command -v jq)` | Path to jq binary |
+| `CLD_CLAUDE_BIN` | `$(command -v claude)` | Path to claude binary |
+| `CLD_CONFIG_FILE` | `<repo>/profiles.json` | Path to profiles config |
+
 ## Setup
+
+Run the install script:
+
+```bash
+./install.sh
+```
+
+It checks dependencies, creates `profiles.json` from the example if missing, and patches `~/.zshrc` with the `fpath` entry and `cld()` function.
+
+Or manually:
 
 1. Create your config from the example:
 

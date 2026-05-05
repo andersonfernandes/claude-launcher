@@ -4,9 +4,26 @@
 # Usage: cld [-w|--worktree] [profile] [claude-args...]
 
 SCRIPT_DIR="${0:A:h}"
-CONFIG_FILE="$SCRIPT_DIR/profiles.json"
-FZF_BIN="$HOME/.local/share/nvim/site/pack/packer/start/fzf/bin/fzf"
-JQ_BIN="/usr/bin/jq"
+
+# Paths — override via environment variables if needed
+CONFIG_FILE="${CLD_CONFIG_FILE:-$SCRIPT_DIR/profiles.json}"
+
+_require() {
+  local var="$1" bin="$2" hint="$3"
+  local val="${(P)var}"
+  if [[ -n "$val" ]]; then
+    [[ -x "$val" ]] || { echo "Error: $var='$val' is not executable." >&2; exit 1; }
+    printf '%s' "$val"
+    return 0
+  fi
+  command -v "$bin" &>/dev/null && { printf '%s' "$(command -v "$bin")"; return 0; }
+  echo "Error: '$bin' not found in PATH. $hint" >&2
+  exit 1
+}
+
+FZF_BIN=$(_require CLD_FZF_BIN    fzf    "Install: brew install fzf  /  apt install fzf")
+JQ_BIN=$(_require  CLD_JQ_BIN     jq     "Install: brew install jq   /  apt install jq")
+CLAUDE_BIN=$(_require CLD_CLAUDE_BIN claude "Install Claude Code: https://claude.ai/code")
 
 FZF_THEME_OPTS=(
   --border=rounded
@@ -446,4 +463,4 @@ if [[ -n "$WORKTREE_PATH" ]]; then
 fi
 
 show_splash "$profile" "$WORKTREE_BRANCH"
-exec /home/anderson/.local/bin/claude "$@"
+exec "$CLAUDE_BIN" "$@"
