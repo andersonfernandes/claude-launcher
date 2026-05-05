@@ -10,9 +10,16 @@ _cld() {
     return 1
   fi
 
-  case $CURRENT in
-    2)
-      # First argument: profile name (context-aware)
+  local state
+
+  _arguments \
+    '(-w --worktree)'{-w,--worktree}'[Force worktree picker even for single-worktree repos]' \
+    '::profile:->profile' \
+    '*:: :->claude_args' \
+    && return 0
+
+  case $state in
+    profile)
       local -a profiles
       local line
       while IFS= read -r line; do
@@ -28,11 +35,10 @@ _cld() {
           ) | "\(.key):\(.value.description)"
         ' "$config_file"
       )
-
       _describe 'profile' profiles
       ;;
-    *)
-      # Remaining arguments: claude flags
+
+    claude_args)
       _arguments \
         '--model[Model to use]:model:(claude-sonnet-4-6 claude-opus-4-6 claude-haiku-4-5-20251001)' \
         '--continue[Continue most recent conversation]' \

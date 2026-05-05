@@ -6,8 +6,9 @@ Profile-based launcher for [Claude Code](https://docs.anthropic.com/en/docs/clau
 
 1. You run `cld` from a project directory
 2. The launcher checks `profiles.json` to find which profiles are allowed for that directory (prefix match)
-3. If one match: auto-selects. If multiple: opens fzf to pick. If none: errors out.
-4. Sets `CLAUDE_CONFIG_DIR=~/.config/claude-code/<profile>` and execs `claude`
+3. If one match: auto-selects. If multiple: opens an fzf picker with a preview pane (description + last session time). If none: errors out.
+4. If the directory is a git repo with 2+ worktrees (or `-w` is passed): opens a worktree picker
+5. Sets `CLAUDE_CONFIG_DIR=~/.config/claude-code/<profile>`, optionally `cd`s into the selected worktree, and execs `claude`
 
 ## Files
 
@@ -80,15 +81,33 @@ Edit `profiles.json` to add or modify profiles:
 cld                        # Auto-select or fzf if multiple profiles match
 cld personal               # Explicitly pick a profile
 cld personal --continue    # Pass flags through to claude
+cld -w                     # Force the worktree picker (even for single-worktree repos)
+cld personal -w            # Explicit profile + forced worktree picker
 ```
+
+## Worktree management
+
+When you're in a git repo with 2+ worktrees, a worktree picker appears automatically after profile selection. Use `-w`/`--worktree` to force it even with just one worktree.
+
+The picker shows all worktrees with their branch names and a preview pane (git status, recent commits, last Claude session). From it you can:
+
+| Selection | Action |
+|---|---|
+| `[ ↩ Stay in current dir ]` | Launch Claude in `$PWD` unchanged |
+| Any listed worktree | `cd` to it and launch Claude there |
+| `[ + New worktree ]` | Pick a branch (or type a new one) — worktree created at `../repo-branch`, then launched |
+| `[ - Remove worktree... ]` | Secondary picker to remove a linked worktree |
+
+Pressing Escape in the worktree picker also falls through to launching in `$PWD`.
 
 ## Tab completion
 
-Completions are context-aware - only profiles valid for your `$PWD` are offered:
+Completions are context-aware — only profiles valid for your `$PWD` are offered:
 
 ```bash
 cd ~/Workspace/Work && cld <TAB>       # offers: work
 cd ~/Workspace/Personal && cld <TAB>   # offers: personal
+cld --<TAB>                            # offers: --worktree, -w, plus claude flags
 ```
 
 After the profile name, common `claude` flags are completed (`--model`, `--continue`, `--resume`, etc.).
