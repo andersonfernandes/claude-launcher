@@ -84,17 +84,21 @@ get_worktrees() {
 
   local wt_path="" wt_branch="" is_bare=0 wt_count=0
 
+  _flush_wt() {
+    [[ "$wt_path" != /* ]] && return   # skip prunable/stale entries with invalid paths
+    [[ $is_bare -eq 1 ]] && return
+    local _m _s
+    [[ "$wt_path" == "$cur_root" ]] && _m="●" || _m=" "
+    [[ -z "$wt_branch" ]] && wt_branch="(detached)"
+    _s="${wt_path/#$HOME/~}"
+    printf '%s\t%s %-24s  %s\n' "$wt_path" "$_m" "$wt_branch" "$_s"
+    (( wt_count++ ))
+  }
+
   while IFS= read -r line; do
     case "$line" in
       worktree\ *)
-        if [[ -n "$wt_path" && $is_bare -eq 0 ]]; then
-          local _m _s
-          [[ "$wt_path" == "$cur_root" ]] && _m="●" || _m=" "
-          [[ -z "$wt_branch" ]] && wt_branch="(detached)"
-          _s="${wt_path/#$HOME/~}"
-          printf '%s\t%s %-24s  %s\n' "$wt_path" "$_m" "$wt_branch" "$_s"
-          (( wt_count++ ))
-        fi
+        [[ -n "$wt_path" ]] && _flush_wt
         wt_path="${line#worktree }"
         wt_branch="" is_bare=0
         ;;
@@ -107,14 +111,7 @@ get_worktrees() {
     esac
   done < <(git worktree list --porcelain 2>/dev/null)
 
-  if [[ -n "$wt_path" && $is_bare -eq 0 ]]; then
-    local _m _s
-    [[ "$wt_path" == "$cur_root" ]] && _m="●" || _m=" "
-    [[ -z "$wt_branch" ]] && wt_branch="(detached)"
-    _s="${wt_path/#$HOME/~}"
-    printf '%s\t%s %-24s  %s\n' "$wt_path" "$_m" "$wt_branch" "$_s"
-    (( wt_count++ ))
-  fi
+  [[ -n "$wt_path" ]] && _flush_wt
 
   printf '__new__\t[ + New worktree ]\n'
   (( wt_count >= 2 )) && printf '__remove__\t[ - Remove worktree... ]\n'
@@ -250,7 +247,8 @@ _create_worktree() {
       "${FZF_THEME_OPTS[@]}" \
       --prompt=" Branch › " \
       --border-label=" ✳ New Worktree " \
-      --height=~15 \
+      --header=$'  \e[2mpick existing → checkout   type new name → create from HEAD\e[0m' \
+      --height=~20 \
       --layout=reverse \
       --print-query
   )
@@ -268,9 +266,12 @@ _create_worktree() {
 
   echo "Creating worktree: $new_path  (branch: $branch)" >&2
 
-  if git -C "$git_rt" branch --list "$branch" 2>/dev/null | grep -q .; then
+  if git -C "$git_rt" show-ref --verify --quiet "refs/heads/$branch" ||
+     git -C "$git_rt" show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+    # Branch exists locally or on remote — check it out (git DWIM creates tracking branch)
     git -C "$git_rt" worktree add "$new_path" "$branch" >&2
   else
+    # Truly new name typed by user — create branch from current HEAD
     git -C "$git_rt" worktree add -b "$branch" "$new_path" >&2
   fi
 
@@ -330,7 +331,14 @@ pick_worktree() {
   local -a wt_lines
 
   while true; do
-    wt_lines=(${(f)"$(get_worktrees)"})
+    wt_lines=()
+    local _raw_line
+    while IFS= read -r _raw_line; do
+      local _f1="${_raw_line%%$'\t'*}"
+      case "$_f1" in
+        __here__|__new__|__remove__|/*) wt_lines+=("$_raw_line") ;;
+      esac
+    done < <(get_worktrees)
 
     local fzf_exit
     raw=$(
