@@ -319,7 +319,7 @@ _remove_worktree() {
   to_remove=$(printf '%s' "$raw" | cut -d$'\t' -f1)
 
   echo "Removing worktree: $to_remove" >&2
-  git worktree remove --force "$to_remove" >&2
+  git worktree remove "$to_remove" >&2
   git worktree prune >&2
 }
 
