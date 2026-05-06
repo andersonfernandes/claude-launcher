@@ -14,6 +14,7 @@ _cld() {
 
   _arguments \
     '(-w --worktree)'{-w,--worktree}'[Force worktree picker even for single-worktree repos]' \
+    '(-t --tmux)'{-t,--tmux}'[Launch Claude in a new tmux window or session]' \
     '::profile:->profile' \
     '*:: :->claude_args' \
     && return 0

@@ -1,7 +1,7 @@
 #!/bin/zsh
 
 # Claude Launcher - profile-based claude config selector
-# Usage: cld [-w|--worktree] [profile] [claude-args...]
+# Usage: cld [-w|--worktree] [-t|--tmux] [profile] [claude-args...]
 
 SCRIPT_DIR="${0:A:h}"
 
@@ -323,6 +323,25 @@ _remove_worktree() {
   git worktree prune >&2
 }
 
+launch_in_tmux() {
+  command -v tmux &>/dev/null || { echo "Error: tmux not found in PATH." >&2; exit 1; }
+
+  local label="$profile"
+  [[ -n "$WORKTREE_BRANCH" ]] && label="${profile}-$(branch_to_slug "$WORKTREE_BRANCH")"
+
+  local tmpf
+  tmpf=$(mktemp)
+  show_splash "$profile" "$WORKTREE_BRANCH" >"$tmpf"
+
+  local _cmd="cat ${(q+)tmpf}; rm -f ${(q+)tmpf}; CLAUDE_CONFIG_DIR=${(q+)CLAUDE_CONFIG_DIR} ${(q+)CLAUDE_BIN}${@:+ ${(q+j: :)@}}"
+
+  if [[ -n "$TMUX" ]]; then
+    tmux new-window -n "$label" -c "$PWD" "$_cmd"
+  else
+    exec tmux new-session -A -s "$label" -c "$PWD" "$_cmd"
+  fi
+}
+
 pick_worktree() {
   local git_rt
   git_rt=$(git_root) || return 0
@@ -387,10 +406,13 @@ pick_worktree() {
 # ── Pre-process: strip -w/--worktree from args ───────────────────────────────
 
 force_wt=0
+use_tmux=0
 new_args=()
 for _a in "$@"; do
   if [[ "$_a" == "-w" || "$_a" == "--worktree" ]]; then
     force_wt=1
+  elif [[ "$_a" == "-t" || "$_a" == "--tmux" ]]; then
+    use_tmux=1
   else
     new_args+=("$_a")
   fi
@@ -470,5 +492,9 @@ if [[ -n "$WORKTREE_PATH" ]]; then
   cd "$WORKTREE_PATH" || { echo "Error: cannot cd to $WORKTREE_PATH" >&2; exit 1 }
 fi
 
-show_splash "$profile" "$WORKTREE_BRANCH"
-exec "$CLAUDE_BIN" "$@"
+if (( use_tmux )); then
+  launch_in_tmux "$@"
+else
+  show_splash "$profile" "$WORKTREE_BRANCH"
+  exec "$CLAUDE_BIN" "$@"
+fi
