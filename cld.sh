@@ -409,7 +409,10 @@ force_wt=0
 use_tmux=0
 new_args=()
 for _a in "$@"; do
-  if [[ "$_a" == "-w" || "$_a" == "--worktree" ]]; then
+  if [[ "$_a" == "-wt" ]]; then
+    force_wt=1
+    use_tmux=1
+  elif [[ "$_a" == "-w" || "$_a" == "--worktree" ]]; then
     force_wt=1
   elif [[ "$_a" == "-t" || "$_a" == "--tmux" ]]; then
     use_tmux=1
